@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skylark Drones BI Agent - Mission Console</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #090d15; color: #e0e0e0; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 280px; background: #0f1419; border-right: 1px solid #1e2835; overflow-y: auto; }
+        .main-content { flex: 1; overflow-y: auto; }
+        .logo { padding: 20px; text-align: center; border-bottom: 1px solid #1e2835; }
+        .logo h1 { color: #f5a623; font-size: 18px; margin-bottom: 5px; }
+        .logo p { color: #7a8a9a; font-size: 12px; }
+        .nav-menu { list-style: none; }
+        .nav-item { padding: 0; }
+        .nav-link { display: block; padding: 15px 20px; color: #b0b8c0; text-decoration: none; border-left: 3px solid transparent; transition: all 0.3s; cursor: pointer; }
+        .nav-link:hover { background: #1a1f28; color: #f5a623; border-left-color: #f5a623; }
+        .nav-link.active { background: #1a1f28; color: #f5a623; border-left-color: #f5a623; }
+        .page { display: none; padding: 30px; }
+        .page.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .header { margin-bottom: 30px; }
+        .header h2 { color: #f5a623; font-size: 28px; margin-bottom: 10px; }
+        .header p { color: #7a8a9a; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: #0f1419; border: 1px solid #1e2835; border-radius: 8px; padding: 20px; transition: all 0.3s; }
+        .card:hover { border-color: #34d2c6; box-shadow: 0 0 20px rgba(52, 210, 198, 0.1); }
+        .card-title { color: #f5a623; font-size: 16px; margin-bottom: 10px; }
+        .card-content { color: #b0b8c0; font-size: 14px; line-height: 1.6; }
+        .stat-box { background: #0f1419; border: 1px solid #1e2835; border-radius: 8px; padding: 20px; text-align: center; }
+        .stat-value { font-size: 32px; color: #34d2c6; font-weight: bold; }
+        .stat-label { color: #7a8a9a; font-size: 12px; margin-top: 5px; }
+        .chat-box { background: #0f1419; border: 1px solid #1e2835; border-radius: 8px; padding: 20px; height: 500px; display: flex; flex-direction: column; }
+        .messages { flex: 1; overflow-y: auto; margin-bottom: 15px; }
+        .message { margin-bottom: 15px; padding: 12px; border-radius: 8px; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .message.user { background: #1a4d2e; color: #34d2c6; text-align: right; }
+        .message.assistant { background: #4d2e1a; color: #f5a623; }
+        .input-area { display: flex; gap: 10px; }
+        .input-area input { flex: 1; background: #1a1f28; border: 1px solid #1e2835; color: #e0e0e0; padding: 10px; border-radius: 8px; }
+        .input-area button { background: #f5a623; color: #090d15; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; }
+        .input-area button:hover { background: #34d2c6; }
+        .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; }
+        .alert-warning { background: #4d3f1a; border: 1px solid #f5a623; color: #f5a623; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .table th { background: #1a1f28; color: #f5a623; padding: 12px; text-align: left; border-bottom: 1px solid #1e2835; }
+        .table td { padding: 12px; border-bottom: 1px solid #1e2835; color: #b0b8c0; }
+        .table tr:hover { background: #1a1f28; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-success { background: #1a4d2e; color: #34d2c6; }
+        .badge-warning { background: #4d3f1a; color: #f5a623; }
+        .badge-danger { background: #4d1a1a; color: #ff6b6b; }
+        @media (max-width: 768px) {
+            .sidebar { width: 0; position: fixed; left: 0; top: 0; height: 100%; z-index: 1000; }
+            .sidebar.open { width: 280px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="logo">
+                <h1>🛸 SKYLARK</h1>
+                <p>BI Mission Console</p>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item"><a class="nav-link active" onclick="switchPage('dashboard', this)">📊 Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="switchPage('pipeline', this)">📈 Pipeline Analysis</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="switchPage('workorders', this)">✅ Work Orders</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="switchPage('leadership', this)">👔 Leadership Summary</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="switchPage('chat', this)">💬 Chat Console</a></li>
+                <li class="nav-item"><a class="nav-link" onclick="switchPage('analytics', this)">📉 Analytics</a></li>
+            </ul>
+        </div>
+        <div class="main-content">
+            <div id="dashboard" class="page active">
+                <div class="header">
+                    <h2>📊 Mission Dashboard</h2>
+                    <p>Real-time overview of all drone operations and business metrics</p>
+                </div>
+                <div class="grid">
+                    <div class="stat-box"><div class="stat-value">346</div><div class="stat-label">Total Deals</div></div>
+                    <div class="stat-box"><div class="stat-value">177</div><div class="stat-label">Active Work Orders</div></div>
+                    <div class="stat-box"><div class="stat-value">$1.2M</div><div class="stat-label">Pipeline Value</div></div>
+                    <div class="stat-box"><div class="stat-value">87%</div><div class="stat-label">Completion Rate</div></div>
+                </div>
+                <div style="margin-top: 30px;">
+                    <h3 style="color: #f5a623; margin-bottom: 15px;">Recent Activity</h3>
+                    <div class="card">
+                        <div class="card-title">Last 24 Hours Summary</div>
+                        <div class="card-content">
+                            <p>✓ 8 deals closed</p>
+                            <p>✓ 24 work orders completed</p>
+                            <p>✓ 342 data quality issues resolved</p>
+                            <p>✓ $45K revenue generated</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="pipeline" class="page">
+                <div class="header">
+                    <h2>📈 Pipeline Analysis</h2>
+                    <p>Detailed analysis of sales pipeline and deal progression</p>
+                </div>
+                <div class="card">
+                    <div class="card-title">Pipeline by Status</div>
+                    <table class="table">
+                        <tr><th>Status</th><th>Count</th><th>Total Value</th><th>Avg Deal Size</th></tr>
+                        <tr><td>Negotiation</td><td><span class="badge badge-warning">89</span></td><td>$445K</td><td>$5.0K</td></tr>
+                        <tr><td>Proposal</td><td><span class="badge badge-warning">124</span></td><td>$620K</td><td>$5.0K</td></tr>
+                        <tr><td>Won</td><td><span class="badge badge-success">89</span></td><td>$445K</td><td>$5.0K</td></tr>
+                        <tr><td>Lost</td><td><span class="badge badge-danger">44</span></td><td>$220K</td><td>$5.0K</td></tr>
+                    </table>
+                </div>
+                <div class="alert alert-warning" style="margin-top: 20px;">
+                    ⚠️ Data Quality: 342 deals missing critical fields. These may affect pipeline accuracy.
+                </div>
+            </div>
+            <div id="workorders" class="page">
+                <div class="header">
+                    <h2>✅ Work Orders</h2>
+                    <p>Monitor and manage active work orders and tasks</p>
+                </div>
+                <div class="card">
+                    <div class="card-title">Active Work Orders</div>
+                    <table class="table">
+                        <tr><th>Order ID</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Due Date</th></tr>
+                        <tr><td>WO-2024-001</td><td><span class="badge badge-success">Completed</span></td><td>High</td><td>Alpha</td><td>2024-12-15</td></tr>
+                        <tr><td>WO-2024-002</td><td><span class="badge badge-warning">In Progress</span></td><td>High</td><td>Beta</td><td>2024-12-20</td></tr>
+                        <tr><td>WO-2024-003</td><td><span class="badge badge-warning">In Progress</span></td><td>Medium</td><td>Gamma</td><td>2024-12-22</td></tr>
+                        <tr><td>WO-2024-004</td><td><span class="badge badge-danger">Pending</span></td><td>Medium</td><td>Delta</td><td>2024-12-25</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div id="leadership" class="page">
+                <div class="header">
+                    <h2>👔 Leadership Summary</h2>
+                    <p>Executive-level insights and KPIs</p>
+                </div>
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-title">Q4 Performance</div>
+                        <div class="card-content">
+                            <p><strong>Revenue:</strong> $1.2M</p>
+                            <p><strong>Growth:</strong> +45% YoY</p>
+                            <p><strong>Win Rate:</strong> 62%</p>
+                            <p><strong>Avg Deal:</strong> $5.0K</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Team Health</div>
+                        <div class="card-content">
+                            <p><strong>Active Users:</strong> 24</p>
+                            <p><strong>Avg Response:</strong> 2.1 hrs</p>
+                            <p><strong>Completion:</strong> 87%</p>
+                            <p><strong>Satisfaction:</strong> 8.5/10</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Risk Assessment</div>
+                        <div class="card-content">
+                            <p><strong>At-Risk Deals:</strong> 23</p>
+                            <p><strong>Overdue Tasks:</strong> 8</p>
+                            <p><strong>Data Quality:</strong> 78/100</p>
+                            <p><strong>Uptime:</strong> 99.8%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="chat" class="page">
+                <div class="header">
+                    <h2>💬 Chat Console</h2>
+                    <p>Ask questions about your business data with AI-powered analysis</p>
+                </div>
+                <div class="chat-box">
+                    <div class="messages" id="messages">
+                        <div class="message assistant">
+                            👋 Hello! I''m your Skylark BI Agent. I can help analyze deals and work orders. What would you like to know?
+                        </div>
+                    </div>
+                    <div class="input-area">
+                        <input type="text" id="chatInput" placeholder="Ask me about deals, work orders, pipeline..." />
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+            <div id="analytics" class="page">
+                <div class="header">
+                    <h2>📉 Analytics</h2>
+                    <p>Detailed metrics and performance analysis</p>
+                </div>
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-title">Deal Distribution</div>
+                        <div class="card-content">
+                            <p>$0-5K: 156 (45%)</p>
+                            <p>$5-10K: 124 (36%)</p>
+                            <p>$10-25K: 54 (16%)</p>
+                            <p>$25K+: 12 (3%)</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Conversion Funnel</div>
+                        <div class="card-content">
+                            <p>Leads: 1,200 (100%)</p>
+                            <p>Proposals: 480 (40%)</p>
+                            <p>Negotiations: 240 (20%)</p>
+                            <p>Won: 89 (7.4%)</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Sales Team</div>
+                        <div class="card-content">
+                            <p>Alpha: $320K (26%)</p>
+                            <p>Beta: $288K (24%)</p>
+                            <p>Gamma: $276K (23%)</p>
+                            <p>Delta: $216K (18%)</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Time to Close</div>
+                        <div class="card-content">
+                            <p>Average: 42 days</p>
+                            <p>Fastest: 3 days</p>
+                            <p>Slowest: 180 days</p>
+                            <p>Median: 38 days</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentSessionId = localStorage.getItem('sessionId') || '';
+        
+        function switchPage(pageName, element) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(pageName).classList.add('active');
+            element.classList.add('active');
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += '<div class="message user">' + message + '</div>';
+            input.value = '';
+            
+            try {
+                const response = await fetch(API_BASE + '/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId, message: message })
+                });
+                
+                const data = await response.json();
+                currentSessionId = data.session_id;
+                localStorage.setItem('sessionId', currentSessionId);
+                
+                messagesDiv.innerHTML += '<div class="message assistant">' + data.reply + '</div>';
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } catch (error) {
+                messagesDiv.innerHTML += '<div class="message assistant" style="background: #4d1a1a;">Error: ' + error.message + '</div>';
+            }
+        }
+        
+        document.getElementById('chatInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
